@@ -11,12 +11,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# 2. Ensure network
-ping -c1 8.8.8.8 >/dev/null 2>&1 || {
-  echo "No Internet connection detected. Connect to Wi-Fi or Ethernet first."
-  exit 1
-}
-
 # 3. Add kernel=kernel8.img if missing (for Redis stability on Pi 5)
 CONFIG=/boot/firmware/config.txt
 if ! grep -q '^kernel=kernel8.img' "$CONFIG"; then
@@ -32,8 +26,7 @@ echo "Updating system packages..."
 apt update && apt full-upgrade -y
 
 # 5. Install dependencies
-apt install -y snapd curl git rsync redis-server
-systemctl enable --now redis-server
+apt install -y snapd
 
 # 6. Enable Snap core + Nextcloud
 echo "Installing Nextcloud (snap)..."
