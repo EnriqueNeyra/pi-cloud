@@ -56,14 +56,24 @@ mount "${DISK}p1" "$MNT/boot/firmware"
 CFG="$MNT/boot/firmware/config.txt"
 if ! grep -q '^kernel=kernel8.img' "$CFG"; then
   echo 'kernel=kernel8.img' | tee -a "$CFG" >/dev/null
+  echo "config.txt modified successfully"
 fi
 
 umount "$MNT/boot/firmware"
 umount "$MNT"
 
 # Set boot order to prefer NVMe → USB → SD
-echo "Setting boot order to prefer NVMe..."
-raspi-config nonint do_boot_order 6  # 6 = NVMe → USB → SD
+echo
+echo "⚙️  Setting Raspberry Pi 5 boot order (NVMe → USB → SD)..."
+TMP=$(mktemp)
+rpi-eeprom-config > "$TMP"
+sed -i '/^BOOT_ORDER=/d' "$TMP"
+sed -i '/^PCIE_PROBE=/d' "$TMP"
+echo "BOOT_ORDER=0xf416" >> "$TMP"
+echo "PCIE_PROBE=1" >> "$TMP"
+rpi-eeprom-config --apply "$TMP"
+rm -f "$TMP"
+echo "✅ Boot order updated!"
 
 echo
 echo "✅ Clone complete! The system is ready to boot from NVMe."
