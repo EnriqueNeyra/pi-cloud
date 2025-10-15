@@ -48,27 +48,18 @@ rpi-clone "$DISK" -f <<< $'yes\nyes\n'
 echo "Clone complete"
 
 # Remount the cloned NVMe so we can modify config.txt
-mountpoint="/mnt/nvme"
-mkdir -p "$mountpoint"
-mount "${DISK}p2" "$mountpoint"
-mount "${DISK}p1" "$mountpoint/boot/firmware"
+MNT="/mnt/clone"
+mkdir -p "$MNT/boot/firmware"
+mount "${DISK}p2" "$MNT"
+mount "${DISK}p1" "$MNT/boot/firmware"
 
-CFG="$mountpoint/boot/firmware/config.txt"
-if [[ -f "$CFG" ]]; then
-  if ! grep -q '^kernel=kernel8.img' "$CFG"; then
-    echo "Adding kernel=kernel8.img to $CFG ..."
-    echo "kernel=kernel8.img" >> "$CFG"
-  else
-    echo "kernel=kernel8.img already present."
-  fi
-else
-  echo "⚠️ Could not find $CFG. Check clone result."
-  exit 1
+CFG="$MNT/boot/firmware/config.txt"
+if ! grep -q '^kernel=kernel8.img' "$CFG"; then
+  echo 'kernel=kernel8.img' | tee -a "$CFG" >/dev/null
 fi
 
-# Unmount cleanly
-umount "$mountpoint/boot/firmware"
-umount "$mountpoint"
+umount "$MNT/boot/firmware"
+umount "$MNT"
 
 # Set boot order to prefer NVMe → USB → SD
 echo "Setting boot order to prefer NVMe..."
