@@ -49,8 +49,8 @@ echo "Clone complete"
 
 # Remount the cloned NVMe so we can modify config.txt
 MNT="/mnt/clone"
-mkdir -p "$MNT/boot/firmware"
 mount "${DISK}p2" "$MNT"
+mkdir -p "$MNT/boot/firmware"
 mount "${DISK}p1" "$MNT/boot/firmware"
 
 CFG="$MNT/boot/firmware/config.txt"
