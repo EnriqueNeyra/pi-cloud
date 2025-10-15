@@ -20,11 +20,6 @@ if [ "$PAGE_SIZE" != "4096" ]; then
   echo "   Ensure 'kernel=kernel8.img' is set in /boot/firmware/config.txt and rebooted."
 fi
 
-if ! ping -c1 -W2 8.8.8.8 >/dev/null 2>&1; then
-  echo "❌ No internet connectivity. Connect to Wi-Fi or Ethernet first."
-  exit 1
-fi
-
 # 2) Install dependencies
 msg "Installing required packages..."
 apt update
