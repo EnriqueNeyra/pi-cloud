@@ -44,11 +44,12 @@ wipefs -a "$DISK" || true
 
 # Clone SD → NVMe (auto-confirm the 'nvme0n1 ends with a digit' prompt)
 echo "Cloning system to NVMe (this may take several minutes)..."
-rpi-clone "$DISK" -f <<< $'yes\nyes\n'
+rpi-clone "$DISK" -f <<< $'yes\n\n'
 echo "Clone complete"
 
 # Remount the cloned NVMe so we can modify config.txt
 MNT="/mnt/clone"
+mkdir -p "$MNT"
 mount "${DISK}p2" "$MNT"
 mkdir -p "$MNT/boot/firmware"
 mount "${DISK}p1" "$MNT/boot/firmware"
