@@ -51,9 +51,9 @@ if ! command -v tailscale >/dev/null 2>&1; then
 fi
 
 msg "Bringing up Tailscale (log in when prompted)..."
-tailscale up || true
+tailscale up
 
-# 5) Add Tailscale MagicDNS hostname as trusted domain
+# 5) Add Tailscale MagicDNS hostname as a trusted domain
 TS_HOST="$(tailscale status --json 2>/dev/null | grep -oE '"DNSName":"[^"]+' | cut -d'"' -f4 | head -n1 || true)"
 if [ -n "$TS_HOST" ]; then
   msg "Adding $TS_HOST to Nextcloud trusted domains (index 1)..."
@@ -64,7 +64,16 @@ else
   echo "    sudo snap run nextcloud.occ config:system:set trusted_domains 1 --value='<your-host>.ts.net'"
 fi
 
-# 6) Display connection info
+# 6) Enable HTTPS padlock via Tailscale (for *.ts.net access)
+msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
+if ! tailscale serve status >/dev/null 2>&1; then
+  tailscale serve https / http://localhost
+  echo "✅ HTTPS proxy enabled — https://$TS_HOST/"
+else
+  echo "ℹ️  HTTPS via Tailscale already active."
+fi
+
+# 7) Display connection info
 LAN_IP="$(hostname -I | awk '{print $1}')"
 
 echo
