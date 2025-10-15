@@ -28,7 +28,7 @@ fi
 # 2) Install dependencies
 msg "Installing required packages..."
 apt update
-apt install -y snapd curl rsync
+apt install -y snapd curl
 
 # 3) Install Nextcloud snap
 if ! snap list | grep -q '^nextcloud '; then
