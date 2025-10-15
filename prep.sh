@@ -22,9 +22,13 @@ echo "Installing rpi-clone..."
 git clone https://github.com/billw2/rpi-clone.git /tmp/rpi-clone
 cp /tmp/rpi-clone/rpi-clone /usr/local/sbin/
 
-# 4. Clone SD → NVMe
-echo "Cloning system to NVMe (this may take several minutes)..."
-rpi-clone /dev/nvme0n1 -f
+# Detect and wipe NVMe, clone from SD -> NVMe
+DISK=/dev/nvme0n1
+echo "Preparing $DISK for cloning..."
+sudo wipefs -a $DISK
+sudo sgdisk --zap-all $DISK
+
+yes yes | sudo rpi-clone $DISK -f
 
 # 5. Add kernel=kernel8.img to ensure Redis stability
 CFG=/boot/firmware/config.txt
