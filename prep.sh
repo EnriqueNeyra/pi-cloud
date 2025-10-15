@@ -29,10 +29,18 @@ if ! command -v rpi-clone >/dev/null 2>&1; then
   cp /tmp/rpi-clone/rpi-clone /usr/local/sbin/
 fi
 
-# Wipe partition table (clean slate)
-echo "Preparing $DISK for cloning (wiping signatures & GPT)..."
+echo
+echo "⚠️  WARNING: This will completely erase and overwrite all data on $DISK!"
+echo "It will clone your current SD card system to the NVMe drive."
+read -rp "Are you sure you want to continue? [y/N]: " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+  echo "Aborting clone. No changes made."
+  exit 0
+fi
+
+# Wipe disk
+echo "Preparing $DISK for cloning..."
 wipefs -a "$DISK" || true
-sgdisk --zap-all "$DISK" || true
 
 # Clone SD → NVMe (auto-confirm the 'nvme0n1 ends with a digit' prompt)
 echo "Cloning system to NVMe (this may take several minutes)..."
