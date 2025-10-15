@@ -10,11 +10,6 @@ echo "=== 🧩 Pi Cloud Prep Starting (clone + NVMe boot enable) ==="
 echo "Checking internet..."
 ping -c1 8.8.8.8 >/dev/null 2>&1 || { echo "❌ No network detected."; exit 1; }
 
-echo "Updating bootloader to latest..."
-sudo apt update -y
-sudo apt install -y rpi-eeprom rpi-eeprom-update git
-sudo rpi-eeprom-update -a
-
 # 2. Detect NVMe
 if ! lsblk | grep -q nvme0n1; then
   echo "❌ No NVMe drive detected. Connect it and try again."
