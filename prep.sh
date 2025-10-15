@@ -6,51 +6,73 @@ set -euo pipefail
 
 echo "=== 🧩 Pi Cloud Prep Starting (clone + NVMe boot enable) ==="
 
-# 1. Confirm network & update firmware
 echo "Checking internet..."
 ping -c1 8.8.8.8 >/dev/null 2>&1 || { echo "❌ No network detected."; exit 1; }
 
-# 2. Detect NVMe
-if ! lsblk | grep -q nvme0n1; then
-  echo "❌ No NVMe drive detected. Connect it and try again."
+# Detect NVMe
+DISK="/dev/nvme0n1"
+if ! lsblk | grep -q "$(basename "$DISK")"; then
+  echo "❌ No NVMe drive detected at $DISK. Connect it and try again."
   exit 1
 fi
-echo "✅ NVMe detected: /dev/nvme0n1"
+echo "✅ NVMe detected: $DISK"
 
-# 3. Install rpi-clone (latest)
-echo "Installing rpi-clone..."
-git clone https://github.com/billw2/rpi-clone.git /tmp/rpi-clone
-cp /tmp/rpi-clone/rpi-clone /usr/local/sbin/
+# Tools we need
+apt update
+apt install -y gdisk rsync
 
-# Detect and wipe NVMe, clone from SD -> NVMe
-DISK=/dev/nvme0n1
-echo "Preparing $DISK for cloning..."
-sudo wipefs -a $DISK
-sudo sgdisk --zap-all $DISK
-
-yes yes | sudo rpi-clone $DISK -f
-
-# 5. Add kernel=kernel8.img to ensure Redis stability
-CFG=/boot/firmware/config.txt
-if ! grep -q '^kernel=kernel8.img' "$CFG"; then
-  echo "Adding kernel=kernel8.img to $CFG ..."
-  echo "kernel=kernel8.img" >> "$CFG"
-else
-  echo "kernel=kernel8.img already present."
+# Install rpi-clone if missing
+if ! command -v rpi-clone >/dev/null 2>&1; then
+  echo "Installing rpi-clone..."
+  rm -rf /tmp/rpi-clone
+  git clone https://github.com/geerlingguy/rpi-clone.git /tmp/rpi-clone
+  cp /tmp/rpi-clone/rpi-clone /usr/local/sbin/
 fi
 
-# 6. Confirm EEPROM boot order (optional safety)
-echo "Setting boot order to prefer NVMe..."
-raspi-config nonint do_boot_order 6  # 6 = NVMe/USB first
+# Wipe partition table (clean slate)
+echo "Preparing $DISK for cloning (wiping signatures & GPT)..."
+wipefs -a "$DISK" || true
+sgdisk --zap-all "$DISK" || true
 
-# 7. Done
+# Clone SD → NVMe (auto-confirm the 'nvme0n1 ends with a digit' prompt)
+echo "Cloning system to NVMe (this may take several minutes)..."
+yes yes | rpi-clone "$DISK" -f
+
+# After rpi-clone, the NVMe is mounted at /mnt/clone — edit its boot config
+CFG="/mnt/clone/boot/firmware/config.txt"
+if [[ -f "$CFG" ]]; then
+  if ! grep -q '^kernel=kernel8.img' "$CFG"; then
+    echo "Adding kernel=kernel8.img to $CFG ..."
+    echo "kernel=kernel8.img" >> "$CFG"
+  else
+    echo "kernel=kernel8.img already present on NVMe copy."
+  fi
+else
+  echo "⚠️ Could not find $CFG (unexpected). Clone likely failed or mount path changed."
+  echo "   Check rpi-clone output; /mnt/clone should contain the cloned system."
+  exit 1
+fi
+
+# Set boot order to prefer NVMe → USB → SD
+echo "Setting boot order to prefer NVMe..."
+raspi-config nonint do_boot_order 6  # 6 = NVMe → USB → SD
+
 echo
 echo "✅ Clone complete! The system is ready to boot from NVMe."
 echo
 echo "Next steps:"
-echo "  1. Shut down: sudo shutdown -h now"
-echo "  2. Remove the SD card"
-echo "  3. Power back on (the Pi should boot directly from NVMe)"
+echo "  1) Shut down the Pi"
+echo "  2) Remove the SD card"
+echo "  3) Power back on (the Pi should boot directly from NVMe)"
 echo
-echo "Once booted, run install.sh to finish setting up Nextcloud + Tailscale."
-echo "=== ✅ Prep finished ==="
+read -rp "Would you like to shut down now so you can remove the SD card? [y/N]: " REPLY
+if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+  echo "Once rebooted, run install.sh to finish setting up Nextcloud + Tailscale"
+  sleep 1
+  echo "Shutting down..."
+  sleep 2
+  shutdown -h now
+else
+  echo "You can shut down manually later with: sudo shutdown -h now"
+  echo "Once rebooted, run install.sh to finish setting up Nextcloud + Tailscale"
+fi
