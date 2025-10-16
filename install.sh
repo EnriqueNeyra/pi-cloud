@@ -49,7 +49,6 @@ msg "Bringing up Tailscale (log in when prompted)..."
 tailscale up
 
 # 5) Add Tailscale MagicDNS hostname as a trusted domain
-apt-get update && apt-get install -y jq
 TS_HOST="$(tailscale status --self --json | jq -r '.Self.DNSName | sub("\\.$";"")')"
 
 if [ -n "$TS_HOST" ]; then
@@ -64,10 +63,15 @@ else
   echo "    sudo snap run nextcloud.occ config:system:set trusted_domains 1 --value='<your-host>.ts.net'"
 fi
 
+# Wait until Nextcloud is listening on 80
+for i in {1..20}; do
+  if curl -fsI http://127.0.0.1/ >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+
 # 6) Enable HTTPS padlock via Tailscale (for *.ts.net access)
 if [ -n "$TS_HOST" ]; then
   msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
-  # If nothing configured yet, set it; otherwise leave existing config alone
   if ! tailscale serve status >/dev/null 2>&1; then
     tailscale serve --bg 80
     echo "✅ HTTPS proxy enabled — https://$TS_HOST/"
@@ -83,9 +87,9 @@ echo
 echo "✅ Installation complete!"
 echo
 echo "Access your Pi Cloud:"
-echo "  • Local (LAN):        http://$LAN_IP/"
+echo "  • Local (LAN):        https://$LAN_IP/"
 if [ -n "${TS_HOST:-}" ]; then
-  echo "  • Remote (Tailscale): http://$TS_HOST/"
+  echo "  • Remote (Tailscale): https://$TS_HOST/"
 fi
 echo
 echo "All data is stored on your NVMe drive at:"
