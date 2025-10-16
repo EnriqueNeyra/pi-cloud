@@ -24,6 +24,8 @@ fi
 msg "Installing required packages..."
 apt update
 apt install -y snapd curl jq
+msg "Waiting for snapd to finish setup..."
+sleep 5
 
 # 3) Install Nextcloud snap
 if ! snap list | grep -q '^nextcloud '; then
