@@ -48,6 +48,7 @@ if ! command -v tailscale >/dev/null 2>&1; then
 fi
 
 msg "Bringing up Tailscale (log in when prompted)..."
+sleep 3
 tailscale up
 
 # 5) Add Tailscale MagicDNS hostname as a trusted domain
