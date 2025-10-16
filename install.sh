@@ -23,7 +23,7 @@ fi
 # 2) Install dependencies
 msg "Installing required packages..."
 apt update
-apt install -y snapd curl
+apt install -y snapd curl jq
 
 # 3) Install Nextcloud snap
 if ! snap list | grep -q '^nextcloud '; then
@@ -49,10 +49,15 @@ msg "Bringing up Tailscale (log in when prompted)..."
 tailscale up
 
 # 5) Add Tailscale MagicDNS hostname as a trusted domain
-TS_HOST="$(tailscale status --json 2>/dev/null | grep -oE '"DNSName":"[^"]+' | cut -d'"' -f4 | head -n1 || true)"
+apt-get update && apt-get install -y jq
+TS_HOST="$(tailscale status --self --json | jq -r '.Self.DNSName | sub("\\.$";"")')"
+
 if [ -n "$TS_HOST" ]; then
-  msg "Adding $TS_HOST to Nextcloud trusted domains (index 1)..."
-  snap run nextcloud.occ config:system:set trusted_domains 1 --value="$TS_HOST" || true
+  msg "Adding $TS_HOST to Nextcloud trusted domains..."
+  NEXT_IDX="$(snap run nextcloud.occ config:system:get trusted_domains \
+    | awk '{print $1}' | sed 's/://g' | sort -n | tail -n1)"
+  NEXT_IDX=$(( ${NEXT_IDX:-0} + 1 ))
+  snap run nextcloud.occ config:system:set trusted_domains "$NEXT_IDX" --value="$TS_HOST"
   snap restart nextcloud || true
 else
   echo "⚠️  Could not detect Tailscale hostname. Add it manually later with:"
@@ -60,12 +65,15 @@ else
 fi
 
 # 6) Enable HTTPS padlock via Tailscale (for *.ts.net access)
-msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
-if ! tailscale serve status >/dev/null 2>&1; then
-  tailscale serve https / http://localhost
-  echo "✅ HTTPS proxy enabled — https://$TS_HOST/"
-else
-  echo "ℹ️  HTTPS via Tailscale already active."
+if [ -n "$TS_HOST" ]; then
+  msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
+  # If nothing configured yet, set it; otherwise leave existing config alone
+  if ! tailscale serve status >/dev/null 2>&1; then
+    tailscale serve --bg 80
+    echo "✅ HTTPS proxy enabled — https://$TS_HOST/"
+  else
+    echo "ℹ️  HTTPS via Tailscale already active — https://$TS_HOST/"
+  fi
 fi
 
 # 7) Display connection info
@@ -80,12 +88,8 @@ if [ -n "${TS_HOST:-}" ]; then
   echo "  • Remote (Tailscale): http://$TS_HOST/"
 fi
 echo
-echo "Optional (adds HTTPS padlock via Tailscale):"
-echo "  sudo tailscale serve https / http://localhost"
-echo
-echo "To create your Nextcloud admin account, visit the local or Tailscale URL above."
-echo
 echo "All data is stored on your NVMe drive at:"
 echo "  /var/snap/nextcloud/common/nextcloud/data"
 echo
+echo "Refer to the README.md for next steps"
 msg "Setup complete 🎉"
