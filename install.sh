@@ -49,6 +49,7 @@ while true; do
   read -s -p "Enter admin password: " ADMIN_PASS
   echo ""
   read -s -p "Confirm password: " ADMIN_PASS_CONFIRM
+  echo ""
   if [ "$ADMIN_PASS" = "$ADMIN_PASS_CONFIRM" ]; then
     break
   else
