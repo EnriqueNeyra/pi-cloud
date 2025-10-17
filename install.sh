@@ -62,13 +62,12 @@ tailscale up
 
 # 6) Add Tailscale MagicDNS hostname as a trusted domain
 TS_HOST="$(tailscale status --self --json | jq -r '.Self.DNSName | sub("\\.$";"")')"
+LAN_IP="$(hostname -I | awk '{print $1}')"
 
 if [ -n "$TS_HOST" ]; then
   msg "Adding $TS_HOST to Nextcloud trusted domains..."
-  NEXT_IDX="$(snap run nextcloud.occ config:system:get trusted_domains \
-    | awk '{print $1}' | sed 's/://g' | sort -n | tail -n1)"
-  NEXT_IDX=$(( ${NEXT_IDX:-0} + 1 ))
-  snap run nextcloud.occ config:system:set trusted_domains "$NEXT_IDX" --value="$TS_HOST"
+  snap run nextcloud.occ config:system:set trusted_domains 1 --value="$TS_HOST"
+  snap run nextcloud.occ config:system:set trusted_domains 2 --value="$LAN_IP"
   snap restart nextcloud || true
 else
   echo "⚠️  Could not detect Tailscale hostname. Add it manually later with:"
@@ -91,9 +90,6 @@ if [ -n "$TS_HOST" ]; then
     echo "ℹ️  HTTPS via Tailscale already active — https://$TS_HOST/"
   fi
 fi
-
-# 7) Display connection info
-LAN_IP="$(hostname -I | awk '{print $1}')"
 
 echo
 echo "✅ Installation complete!"
