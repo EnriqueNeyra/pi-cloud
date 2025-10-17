@@ -68,7 +68,12 @@ fi
 
 msg "Bringing up Tailscale (log in when prompted)..."
 sleep 5
-tailscale up
+# Idempotent: only run 'tailscale up' if not already running
+if ! tailscale status >/dev/null 2>&1; then
+  tailscale up
+else
+  echo "Tailscale already up."
+fi
 
 # 6) Add Tailscale MagicDNS hostname as a trusted domain
 TS_HOST="$(tailscale status --self --json | jq -r '.Self.DNSName | sub("\\.$";"")')"
@@ -90,7 +95,6 @@ for i in {1..20}; do
   sleep 1
 done
 
-# 7) Enable HTTPS padlock via Tailscale (for *.ts.net access)
 # 7) Enable HTTPS padlock via Tailscale (for *.ts.net access)
 if [ -n "$TS_HOST" ]; then
   msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
