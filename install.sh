@@ -37,22 +37,30 @@ else
   msg "Nextcloud already installed. Skipping."
 fi
 
-# Wait a few seconds for Nextcloud to initialize
+# 4) Wait a few seconds for Nextcloud to initialize, then create admin account
 msg "Waiting for Nextcloud services..."
 sleep 10
 snap restart nextcloud || true
 
-# 4) Install Tailscale
+echo
+msg "=== Create your Nextcloud admin account ==="
+read -p "Enter admin username: " ADMIN_USER
+read -s -p "Enter admin password: " ADMIN_PASS
+echo ""
+echo "Setting up Nextcloud admin account..."
+snap run nextcloud.manual-install "$ADMIN_USER" "$ADMIN_PASS" || true
+
+# 5) Install Tailscale
 if ! command -v tailscale >/dev/null 2>&1; then
   msg "Installing Tailscale..."
   curl -fsSL https://tailscale.com/install.sh | bash
 fi
 
 msg "Bringing up Tailscale (log in when prompted)..."
-sleep 3
+sleep 5
 tailscale up
 
-# 5) Add Tailscale MagicDNS hostname as a trusted domain
+# 6) Add Tailscale MagicDNS hostname as a trusted domain
 TS_HOST="$(tailscale status --self --json | jq -r '.Self.DNSName | sub("\\.$";"")')"
 
 if [ -n "$TS_HOST" ]; then
@@ -73,7 +81,7 @@ for i in {1..20}; do
   sleep 1
 done
 
-# 6) Enable HTTPS padlock via Tailscale (for *.ts.net access)
+# 7) Enable HTTPS padlock via Tailscale (for *.ts.net access)
 if [ -n "$TS_HOST" ]; then
   msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
   if ! tailscale serve status >/dev/null 2>&1; then
@@ -91,7 +99,7 @@ echo
 echo "✅ Installation complete!"
 echo
 echo "Access your Pi Cloud:"
-echo "  • Local (LAN):        https://$LAN_IP/"
+echo "  • Local (LAN):        http://$LAN_IP/"
 if [ -n "${TS_HOST:-}" ]; then
   echo "  • Remote (Tailscale): https://$TS_HOST/"
 fi
