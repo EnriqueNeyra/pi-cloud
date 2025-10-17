@@ -37,7 +37,7 @@ else
   msg "Nextcloud already installed. Skipping."
 fi
 
-# 4) Wait a few seconds for Nextcloud to initialize, then create admin account
+# 4) Create Nextcloud Admin Account
 msg "Waiting for Nextcloud services..."
 sleep 10
 snap restart nextcloud || true
@@ -45,8 +45,16 @@ snap restart nextcloud || true
 echo
 msg "=== Create your Nextcloud admin account ==="
 read -p "Enter admin username: " ADMIN_USER
-read -s -p "Enter admin password: " ADMIN_PASS
-echo ""
+while true; do
+  read -s -p "Enter admin password: " ADMIN_PASS
+  read -s -p "Confirm password: " ADMIN_PASS_CONFIRM
+  if [ "$ADMIN_PASS" = "$ADMIN_PASS_CONFIRM" ]; then
+    break
+  else
+    echo "❌ Passwords do not match. Please try again."
+  fi
+done
+
 echo "Setting up Nextcloud admin account..."
 snap run nextcloud.manual-install "$ADMIN_USER" "$ADMIN_PASS" || true
 
