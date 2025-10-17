@@ -81,14 +81,15 @@ for i in {1..20}; do
 done
 
 # 7) Enable HTTPS padlock via Tailscale (for *.ts.net access)
+# 7) Enable HTTPS padlock via Tailscale (for *.ts.net access)
 if [ -n "$TS_HOST" ]; then
   msg "Enabling HTTPS access for $TS_HOST via Tailscale..."
-  if ! tailscale serve status >/dev/null 2>&1; then
-    tailscale serve --bg 80
-    echo "✅ HTTPS proxy enabled — https://$TS_HOST/"
-  else
-    echo "ℹ️  HTTPS via Tailscale already active — https://$TS_HOST/"
-  fi
+  tailscale serve --bg 80 || true
+  echo "✅ HTTPS proxy ensured — https://$TS_HOST/"
+  # Make Nextcloud trust the local proxy and use HTTPS
+  sudo snap run nextcloud.occ config:system:set trusted_proxies 0 --value=127.0.0.1
+  sudo snap run nextcloud.occ config:system:set overwriteprotocol --value=https
+  sudo snap restart nextcloud || true
 fi
 
 echo
